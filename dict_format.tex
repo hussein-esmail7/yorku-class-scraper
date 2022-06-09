@@ -1,0 +1,120 @@
+% dict_format.tex
+% Author: Hussein Esmail
+% Created: 2022 06 08
+
+% =========================== Variables ===========================
+\def\myAuthor			{Hussein Esmail} % Author of this file
+\def\mySubject			{PDF Subject Here}  % Used for Metadata
+\def\myKeywords			{PDF Keywords Here} % Separated by comma
+\def\myDateCreated		{2022 06 08}
+\def\myDateUpdated		{\today}
+\def\myTitle			{YorkU Class Scraper Dictionary Format}
+% =========================== Variables ===========================
+
+% =========================== Shortcuts ===========================
+\def\bg{backgroundcolor}
+\def\len{\setlength}
+\newcommand{\image}[1]{[\textbf{IMAGE MISSING #1}]} % #1 is the descriptor about the image
+\newenvironment{itemize*}{\begin{itemize}\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}{\end{itemize}}
+\newenvironment{enumerate*}{\begin{enumerate}\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}{\end{enumerate}}
+\newenvironment{enumalph*}{\begin{enumerate}[label=\alph*.]\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}{\end{enumerate}}
+\newenvironment{enumq*}{\begin{enumerate}[label=Q{{\arabic*}}.]\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}{\end{enumerate}}
+\newcommand{\TODO}[1]{\todo[backgroundcolor=none, linecolor=red]{#1}}
+\newcommand{\TODOimg}[1]{\todo[inline, \bg=gray]{\textbf{IMG}: #1}}
+\newcommand{\TODOcontent}[1]{\todo[\bg=red, linecolor=red]{\textbf{CON}: #1}}
+\newcommand{\TODOfig}[1]{\todo[inline, \bg=orange]{\textbf{FIG}: #1}}
+% =========================== Shortcuts ===========================
+
+\documentclass{article}
+\title{\vspace{-3cm} \\ \myTitle}
+\author{\myAuthor}
+\date{\myDateUpdated}
+
+\usepackage{enumitem}	% Used for enumalpha environment
+
+\usepackage{hyperref}   % Used for adding PDF metadata
+
+\hypersetup{
+    colorlinks=true,
+	urlcolor=blue,		% URL colors (\href{}{})
+	linkcolor=blue,
+    pdfborder={0 0 0},
+    pdftitle={\myTitle},
+    pdfauthor={\myAuthor},
+    pdfsubject={\mySubject},
+    pdfkeywords={\myKeywords}
+}
+
+% Prevent word hyphenation
+\tolerance=1
+\emergencystretch=\maxdimen
+\hyphenpenalty=10000
+\hbadness=10000
+
+\begin{document}        % Official beginning of the document.
+\maketitle              % Make title page
+
+\section{How This Guide is Formatted}
+This guide is made using \LaTeX{}, a typesetting document format, mainly used
+for large documents like STEM documents, theses, and research papers. To read
+more about what I think about \LaTeX{}, you
+\href{https://husseinesmail.xyz/articles/is-latex-better.html}{can go here}.
+
+\section{Format}
+\noindent Course
+\begin{itemize*}
+	\item Department (Example: ``LE'')
+	\item Code (Example: ``EECS'')
+	\item Num (Example: ``2001'' for EECS 2001)
+	\item Credits (Example: ``3.0'')
+	\item Title
+	\item URL
+	\item Description
+	\item Sections
+	\begin{itemize*}
+		\item Section A
+		\begin{itemize*}
+			\item ...
+		\end{itemize*}
+		\item Section B
+		\begin{itemize*}
+			\item ...
+		\end{itemize*}
+		\item Section C
+		\begin{itemize*}
+			\item Term (Examples: ``F'', ``W'', ``SU'', ``S1'', ...)
+			\item Code (Examples: ``A'', ``B'', ``M'', ``N'', ...)
+			\item Profs
+			\item CAT
+			\item LECT
+			\begin{itemize*}
+				\item Day (MTWRF)
+				\item Time (24h)
+				\item Duration
+				\item Location
+			\end{itemize*}
+			\item TUTR
+			\begin{itemize*}
+				\item CAT
+				\item Day (MTWRF)
+				\item Time (24h)
+				\item Duration
+				\item Location
+				\item TA
+				\item Num (Example: ``02'' for TUTR 02)
+			\end{itemize*}
+			\item LAB
+			\begin{itemize*}
+				\item CAT
+				\item Day (MTWRF)
+				\item Time (24h)
+				\item Duration
+				\item Location
+				\item TA
+				\item Num (Example: ``02'' for LAB 02)
+			\end{itemize*}
+		\end{itemize*}
+	\end{itemize*}
+\end{itemize*}
+
+\end{document}
