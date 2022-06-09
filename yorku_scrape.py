@@ -22,7 +22,7 @@ from selenium.webdriver.support.ui import Select # To select items from a menu
 # from selenium.webdriver.common.keys import Keys  # Used for pressing special keys, like 'enter'
 
 # ========= VARIABLES ===========
-bool_run_in_background  = False
+bool_run_in_background  = True
 target_site             = "https://w2prod.sis.yorku.ca/Apps/WebObjects/cdm.woa/1/wo/o8OnkyYDyavkUersg4PShg/0.3.10.21"
 BOOL_DEV_PRINTS         = False
 BOOL_QUIET              = False # TODO: Unused. Implement this
@@ -245,7 +245,7 @@ def main():
                 temp_type = table_main[0].text.split(" ")[0]
                 if temp_type in ["LECT", "LAB", "TUTR", "BLEN", "SDIO"]:
                     # If it's a valid type
-                    subtable_location = course_section_table[1].find_elements(By.XPATH, ".//td[2]/table/tbody/tr")
+                    subtable_location = course_section_part.find_elements(By.XPATH, ".//td[2]/table/tbody/tr")
                     if BOOL_DEV_PRINTS:
                         print(f"{str_prefix_info}\t\ttable_main:")
                         for num3, item3 in enumerate(table_main):
