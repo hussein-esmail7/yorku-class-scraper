@@ -109,7 +109,7 @@ def main():
     # .split("-") is there in case a FW option is selected, need to calculate
     #   which semester is needed per section of a course (can be offered in
     #   both semesters).
-    semester_year = list_semesters[num_semester-1].split(" ")[-1].split("-")
+    semester_year = list_semesters[num_semester-1].text.split(" ")[-1].split("-")
 
     list_semesters_box.select_by_value(str(num_semester-1))
     # Find the semester option box
