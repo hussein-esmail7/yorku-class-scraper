@@ -101,7 +101,15 @@ def main():
     # Asks what semester they want to iterate.
     # If the user wants to iterate multiple semesters, they would have to run
     # this program multiple times
-    num_semester = ask_int("Which semester to iterate:")
+    num_semester = ask_int("Which semester to iterate:") # Starts at 1
+    # Convert the selected option's text to get the year
+    # Formats:
+    #   "Summer 2022"
+    #   "Fall/Winter 2021-2022"
+    # .split("-") is there in case a FW option is selected, need to calculate
+    #   which semester is needed per section of a course (can be offered in
+    #   both semesters).
+    semester_year = list_semesters[num_semester-1].split(" ")[-1].split("-")
 
     list_semesters_box.select_by_value(str(num_semester-1))
     # Find the semester option box
@@ -233,6 +241,10 @@ def main():
             # Each course section
             temp_section = {} # Temporary dict. Will add to array when done
             temp_section["Term"] = course_section.find_element(By.XPATH, ".//td/table/tbody/tr[1]/td[1]/span/span").text.split(" ")[1] # F/W/SU/etc
+            temp_section["Year"] = semester_year[0]
+            if temp_section["Term"] == "W":
+                temp_section["Year"] = semester_year[1]
+            # temp_section["Year"] = course_section.find_element(By.XPATH, ".//td/table/tbody/tr[1]/td[1]/span/span").text.split(" ")[1] # F/W/SU/etc
             temp_section["Code"] = course_section.find_element(By.XPATH, ".//td/table/tbody/tr[1]/td[1]/span").text.split(" ")[-1] # Section (A/B/C/M/N)
             temp_section["LECT"] = []
             temp_section["TUTR"] = []
