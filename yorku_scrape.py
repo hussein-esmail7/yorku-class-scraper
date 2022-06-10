@@ -58,6 +58,7 @@ str_prefix_y_n          = f"[{color_pink}y/n{color_end}]"
 str_prefix_err          = f"[{color_red}ERROR{color_end}]\t "
 str_prefix_done         = f"[{color_green}DONE{color_end}]\t "
 str_prefix_info         = f"[{color_cyan}INFO{color_end}]\t "
+str_prefix_warn         = f"[{color_yellow}WARN{color_end}]\t "
 
 def yes_or_no(str_ask):
     while True:
@@ -363,12 +364,14 @@ def main():
                                 elif temp_type == "SDIO":
                                     # TODO
                                     temp_section["SDIO"].append(temp_entry)
-                                else:
+                                elif temp_type in ["TUTR", "LAB", "SEMR"]:
                                     # TUTR, LAB, SEMR
                                     temp_entry["CAT"] = table_main[-3].text
                                     temp_entry["TA"] = table_main[-2].text.strip()
                                     temp_entry["Num"] = table_main[0].text.split(" ")[-1]
                                     temp_section[temp_type].append(temp_entry)
+                                else:
+                                    print(f"{str_prefix_warn} Found new type: {temp_type}")
 
                 # NOTE: End of loop
                 arr_courses[num]["Sections"].append(temp_section)
