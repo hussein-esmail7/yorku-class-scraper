@@ -182,6 +182,7 @@ def main():
         if not FILENAME_OUTPUT.endswith(".json"):
             FILENAME_OUTPUT = FILENAME_OUTPUT + ".json"
         confirmed_filename = yes_or_no(f"Is '{FILENAME_OUTPUT}' correct? ")
+    print(f"{str_prefix_info} Starting...")
     # Iterate through every course choice
     for course_iteration_num, course_number in enumerate(arr_course_code_choices):
         arr_courses = [] # Dictionary entries will be stored here per course code
