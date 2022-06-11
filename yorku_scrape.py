@@ -74,6 +74,12 @@ def yes_or_no(str_ask):
         else:
             print(f"{str_prefix_err} {error_neither_y_n}")
 
+
+def print_dev(str):
+    if BOOL_DEV_PRINTS:
+        print(f"\t\t\t{str}")
+
+
 def ask_int(question):
     bool_continue_asking_q = True
     ans = ""
@@ -104,6 +110,7 @@ def main():
     service = Service(ChromeDriverManager(log_level=0).install())
     driver = webdriver.Chrome(service=service, options=options)
     driver.set_window_size(400, 1000) # Window size
+    driver.implicitly_wait(10) # Timeout 10s when getting any element or page
     driver.get(target_site)
     try:
         driver.find_element(By.XPATH, "/html/body/table/tbody/tr[2]/td/a[1]").click()
@@ -179,8 +186,6 @@ def main():
     for course_iteration_num, course_number in enumerate(arr_course_code_choices):
         arr_courses = [] # Dictionary entries will be stored here per course code
         # Added to arr_courses_all at the end of every loop iteration
-        if len(arr_course_code_choices) != 1 and not BOOL_QUIET:
-            print(f"{str_prefix_info} Starting {course_codes_all[course_number]} courses - {course_iteration_num+1}/{len(arr_course_code_choices)} ({int(round(((course_iteration_num+1)/(len(arr_course_code_choices)))*100, 0))}%)")
         try: # Attempt to get the URL
             # Go back to the main site and pick the next course
             if course_iteration_num != 0:
@@ -224,13 +229,21 @@ def main():
             table_courses = driver.find_element(By.XPATH, "/html/body/table/tbody/tr[2]/td[2]/table/tbody/tr[2]/td/table/tbody/tr/td/table[2]/tbody")
             table_courses_list = table_courses.find_elements(By.XPATH, ".//tr")
             # First entry is the column names (index 0)
+            if len(arr_course_code_choices) != 1 and not BOOL_QUIET:
+                course_or_courses = "course"
+                if len(table_courses_list) == 2:
+                    course_or_courses = course_or_courses + "s"
+                print(f"{str_prefix_info} {course_codes_all[course_number]}: {course_iteration_num+1}/{len(arr_course_code_choices)}, {int(round(((course_iteration_num+1)/(len(arr_course_code_choices)))*100, 0))}% ({len(table_courses_list)-1} {course_or_courses})")
             for num, item in enumerate(table_courses_list[1:]):
                 course_info = item.find_elements(By.XPATH, ".//td")
                 # course_info[0]: Course code info "LE/EECS 1001 1.00" (example)
                 # course_info[1]: Course title
                 # course_info[2]: URL (inside <a> element)
                 # course_info[3]: Irrelevent (under "General Education Details" column)
-                info_split = re.search(r"(..)\/(....) (....) (.).(..)", course_info[0].text)
+                info_split = re.search(r"(..)\/(.{2,4}) (....) (.).(..)", course_info[0].text)
+                # "(.{2,4})" instead of "(....)" because a course code can be
+                # 2-4 letters. "(....)" only accepts 4-letter codes
+                # print(f"{num} {course_info[0].text}")
                 if info_split is not None:
                     course_url = course_info[2].find_element(By.XPATH, ".//a").get_attribute("href")
                     arr_courses.append({
@@ -243,6 +256,7 @@ def main():
                             "Description":  "", # To be added later
                             "Sections": [] # To be added later
                         })
+                    # print(arr_courses[-1])
 
             for num, course_entry in enumerate(arr_courses):
                 if not BOOL_QUIET:
@@ -341,8 +355,7 @@ def main():
 
                             # Calculate how many meeting times there are
                             num_meeting = (len(table_main) - 5) /4
-                            if BOOL_DEV_PRINTS:
-                                print(f"\t\t\t{num_meeting} meetings")
+                            print_dev(f"{num_meeting} meetings")
                             # However many items there are depends on the typ
                             # If LECT, as many lectures there are in that week
                             # If TUTR, likely only 1
@@ -372,12 +385,12 @@ def main():
                                         temp_entry["Num"] = table_main[0].text.split(" ")[-1]
                                         temp_section[temp_type].append(temp_entry)
                                     else:
-                                        print(f"{str_prefix_warn} Found new type: {temp_type}")
+                                        print(f"{str_prefix_warn} Ignored type: {temp_type} (not added to JSON)")
 
                     # NOTE: End of loop
                     arr_courses[num]["Sections"].append(temp_section)
         except NoSuchElementException:
-            print(f"{str_prefix_err} Could not get course!")
+            print(f"{str_prefix_err} {course_number}: Could not get courses!")
         arr_courses_all = arr_courses_all + arr_courses # Add the course code you just did to all course codes
 
     # Output JSON
