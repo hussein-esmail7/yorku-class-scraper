@@ -258,140 +258,93 @@ def main():
                             "Sections": [] # To be added later
                         })
                     # print(arr_courses[-1])
-
-            for num, course_entry in enumerate(arr_courses):
-                if not BOOL_QUIET:
-                    print(f"\t  {course_entry['Code']} {course_entry['Num']} - {num+1}/{len(arr_courses)} ({int(round((num+1)/len(arr_courses)*100, 0))}%)")
-                # Each individual course page
-                driver.get(course_entry["URL"]) # Go to the course page
-                time.sleep(3) # Wait for the page to load
-                course_entry_page_main = driver.find_element(By.XPATH, "/html/body/table/tbody/tr[2]/td[2]/table/tbody/tr[2]/td/table/tbody/tr/td")
-                arr_courses[num]["Description"] = course_entry_page_main.find_elements(By.XPATH, ".//p")[4].text # Add course description to entry dictionary
-                course_entry_page_table = course_entry_page_main.find_elements(By.XPATH, ".//table[2]/tbody/*") # Number of elements = number of sections during this term
-                # "Sections" portion of arr_courses:
-                # {
-                #   "Term": F/W/SU/S1/etc.
-                #   "Code": Course section code, single letter
-                #       - NOTE: SU/F sections start at A, W starts at M
-                #   "Profs": Array. Who is teaching the LECTURES ONLY. Possibly
-                #       multiple
-                #   "CAT": CAT Code.
-                #       - NOTE: If there is more than 1 tutorial in this course,
-                #               have "-1" here, because then it is tutorial-specific
-                #   "LECT": Array of dicts for lectures in the week
-                #   {
-                #       "Day": Weekday (single letter, MTWRF)
-                #       "Time": Start time, in 24h. Ex: 14:30 is 2:30pm
-                #       "Duration": In minutes
-                #       "Location": Building + Room
-                #   }
-                #   "TUTR": Array of dicts for tutorials in the week
-                #   - NOTE: If it says "Cancelled" in the CAT column, don't add
-                #   {
-                #       "CAT": If there is a CAT associated to this course row
-                #       "Day": Weekday (single letter, MTWRF)
-                #       "Time": Start time, in 24h. Ex: 14:30 is 2:30pm
-                #       "Duration": In minutes
-                #       "Location": Building + Room
-                #       "TA": TA of this course
-                #       "Num": Tutorial number, if you want a specific tutorial
-                #   }
-                #   "LAB": How many labs there are in the week (LAB)
-                #   - NOTE: If it says "Cancelled" in the CAT column, don't add
-                #   {
-                #       "CAT": If there is a CAT associated to this course row
-                #       "Day": Weekday (single letter, MTWRF)
-                #       "Time": Start time, in 24h. Ex: 14:30 is 2:30pm
-                #       "Duration": In minutes
-                #       "Location": Building + Room
-                #       "TA": TA of this course
-                #       "Num": Lab number, if you want a specific lab
-                #   }
-                #   "SEMR": How many seminars there are in the week (SEMR)
-                #   - NOTE: If it says "Cancelled" in the CAT column, don't add
-                #   {
-                #       "CAT": If there is a CAT associated to this course row
-                #       "Day": Weekday (single letter, MTWRF)
-                #       "Time": Start time, in 24h. Ex: 14:30 is 2:30pm
-                #       "Duration": In minutes
-                #       "Location": Building + Room
-                #       "TA": TA of this course
-                #       "Num": Seminar number, if you want a specific seminar
-                #   }
-                #   "Num_Studios": How many studios there are in the week (SDIO?)
-                #   - TODO: More info about SDIOs
-                # }
-                for course_section in course_entry_page_table:
-                    # Each course section
-                    temp_section = {} # Temporary dict. Will add to array when done
-                    temp_section["Term"] = course_section.find_element(By.XPATH, ".//td/table/tbody/tr[1]/td[1]/span/span").text.split(" ")[1] # F/W/SU/etc
-                    temp_section["Year"] = semester_year[0]
-                    if temp_section["Term"] == "W":
-                        temp_section["Year"] = semester_year[1]
-                    # temp_section["Year"] = course_section.find_element(By.XPATH, ".//td/table/tbody/tr[1]/td[1]/span/span").text.split(" ")[1] # F/W/SU/etc
-                    temp_section["Code"] = course_section.find_element(By.XPATH, ".//td/table/tbody/tr[1]/td[1]/span").text.split(" ")[-1] # Section (A/B/C/M/N)
-                    temp_section["LECT"] = []
-                    temp_section["TUTR"] = []
-                    temp_section["LAB"] = []
-                    temp_section["SDIO"] = []
-                    temp_section["SEMR"] = []
-                    course_section_table = course_section.find_elements(By.XPATH, ".//td/table/tbody/tr[3]/td/table/tbody/tr") # List of LECT/TUTR/Lab/etc.
-                    if BOOL_DEV_PRINTS:
-                        print(f"\t\t\tStarting iteration for Section {temp_section['Code']}")
-                        print(f"\t\t\t{len(course_section_table)} - course_section_table length")
-                    # for course_section_part in course_section_table[1:-1]:
-                    for course_section_part in course_section_table[1:]:
-                        # First entry is the column names
-                        table_main = course_section_part.find_elements(By.XPATH, ".//td")
-                        temp_type = table_main[0].text.split(" ")[0]
-                        if BOOL_DEV_PRINTS:
-                            print(f"\t\t\tType: {temp_type}")
-                        if temp_type in ["LECT", "LAB", "TUTR", "BLEN", "SDIO", "SEMR"]:
-                            # If it's a valid type
-                            subtable_location = course_section_part.find_elements(By.XPATH, ".//td[2]/table/tbody/tr")
-                            if BOOL_DEV_PRINTS:
-                                print(f"{str_prefix_info}\t\ttable_main:")
-                                for num3, item3 in enumerate(table_main):
-                                    print(f"\t\t\t{num3}: {item3.text}")
-
-                            # Calculate how many meeting times there are
-                            num_meeting = (len(table_main) - 5) /4
-                            print_dev(f"{num_meeting} meetings")
-                            # However many items there are depends on the typ
-                            # If LECT, as many lectures there are in that week
-                            # If TUTR, likely only 1
-                            # If LAB, likely only 1
-                            # TODO: SDIO
-                            for subtable_entry in subtable_location:
-                                if table_main[-3].text != "Cancelled":
-                                    subtable_items = subtable_entry.find_elements(By.XPATH, ".//td")
-                                    temp_entry = {}
-                                    if BOOL_DEV_PRINTS:
-                                        for test_item in subtable_items:
-                                            print(f"\t\t\t - {test_item.text}")
-                                    temp_entry["Day"] = subtable_items[0].text
-                                    temp_entry["Time"] = subtable_items[1].text
-                                    temp_entry["Duration"] = subtable_items[2].text
-                                    temp_entry["Location"] = ' '.join(subtable_items[3].text.split())
-                                    if temp_type == "LECT":
-                                        temp_section["Profs"] = table_main[-3].text.strip() # Equivalent to TA for TUTR and LAB
-                                        temp_section["LECT"].append(temp_entry)
-                                    elif temp_type == "SDIO":
-                                        # TODO
-                                        temp_section["SDIO"].append(temp_entry)
-                                    elif temp_type in ["TUTR", "LAB", "SEMR"]:
-                                        # TUTR, LAB, SEMR
-                                        temp_entry["CAT"] = table_main[-3].text
-                                        temp_entry["TA"] = table_main[-2].text.strip()
-                                        temp_entry["Num"] = table_main[0].text.split(" ")[-1]
-                                        temp_section[temp_type].append(temp_entry)
-                                    else:
-                                        print(f"{str_prefix_warn} Ignored type: {temp_type} (not added to JSON)")
-
-                    # NOTE: End of loop
-                    arr_courses[num]["Sections"].append(temp_section)
         except NoSuchElementException:
             print(f"{str_prefix_err} {course_number}: Could not get courses!")
+
+# TODO =============
+    for num, course_entry in enumerate(arr_courses):
+        if not BOOL_QUIET:
+            print(f"\t  {course_entry['Code']} {course_entry['Num']} - {num+1}/{len(arr_courses)} ({int(round((num+1)/len(arr_courses)*100, 0))}%)")
+        # Each individual course page
+        driver.get(course_entry["URL"]) # Go to the course page
+        time.sleep(3) # Wait for the page to load
+        course_entry_page_main = driver.find_element(By.XPATH, "/html/body/table/tbody/tr[2]/td[2]/table/tbody/tr[2]/td/table/tbody/tr/td")
+        arr_courses[num]["Description"] = course_entry_page_main.find_elements(By.XPATH, ".//p")[4].text # Add course description to entry dictionary
+        course_entry_page_table = course_entry_page_main.find_elements(By.XPATH, ".//table[2]/tbody/*") # Number of elements = number of sections during this term
+        # "Sections" portion of arr_courses:
+        # {
+        #   "Term": F/W/SU/S1/etc.
+        #   "Code": Course section code, single letter
+        #       - NOTE: SU/F sections start at A, W starts at M
+        #   "Profs": Array. Who is teaching the LECTURES ONLY. Possibly
+        #       multiple
+        #   "CAT": CAT Code.
+        #       - NOTE: If there is more than 1 tutorial in this course,
+        #               have "-1" here, because then it is tutorial-specific
+        #   "Meetings": Array of occurences for lectures, tutorials, labs, etc.
+        #   {
+        #       "Type": "LECT", "TUTR", "LAB", "BLEN", etc.
+        #       "CAT": If there is a CAT associated to this course row
+        #           NOTE: If "Cancelled" in the CAT column, don't add
+        #       "Day": Weekday (single letter, MTWRF)
+        #       "Time": Start time, in 24h. Ex: 14:30 is 2:30pm
+        #       "Duration": In minutes
+        #       "Location": Building + Room
+        #       "TA": TA of this course
+        #       "Num": Tutorial number, if you want a specific tutorial
+        #   }
+        # }
+        for course_section in course_entry_page_table:
+            # Each course section
+            temp_section = {} # Temporary dict. Will add to array when done
+            temp_section["Term"] = course_section.find_element(By.XPATH, ".//td/table/tbody/tr[1]/td[1]/span/span").text.split(" ")[1] # F/W/SU/etc
+            temp_section["Year"] = semester_year[0]
+            if temp_section["Term"] == "W":
+                temp_section["Year"] = semester_year[1]
+            # temp_section["Year"] = course_section.find_element(By.XPATH, ".//td/table/tbody/tr[1]/td[1]/span/span").text.split(" ")[1] # F/W/SU/etc
+            temp_section["Code"] = course_section.find_element(By.XPATH, ".//td/table/tbody/tr[1]/td[1]/span").text.split(" ")[-1] # Section (A/B/C/M/N)
+            temp_section["Meetings"] = []
+            course_section_table = course_section.find_elements(By.XPATH, ".//td/table/tbody/tr[3]/td/table/tbody/tr") # List of LECT/TUTR/Lab/etc.
+            if BOOL_DEV_PRINTS:
+                print(f"\t\t\tStarting iteration for Section {temp_section['Code']}")
+                print(f"\t\t\t{len(course_section_table)} - course_section_table length")
+            # for course_section_part in course_section_table[1:-1]:
+            for course_section_part in course_section_table[1:]:
+                # First entry is the column names
+                table_main = course_section_part.find_elements(By.XPATH, ".//td")
+                temp_type = table_main[0].text.split(" ")[0].strip()
+                # If it's a valid type
+                subtable_location = course_section_part.find_elements(By.XPATH, ".//td[2]/table/tbody/tr")
+                if BOOL_DEV_PRINTS:
+                    print(f"{str_prefix_info}\t\ttable_main:")
+                    for num3, item3 in enumerate(table_main):
+                        print(f"\t\t\t{num3}: {item3.text}")
+                # Calculate how many meeting times there are
+                num_meeting = (len(table_main) - 5) /4
+                print_dev(f"{num_meeting} meetings")
+                # However many items there are depends on the type
+                # If LECT, as many lectures there are in that week
+                # If TUTR, likely only 1
+                # If LAB, likely only 1
+                for subtable_entry in subtable_location:
+                    if table_main[-3].text != "Cancelled":
+                        subtable_items = subtable_entry.find_elements(By.XPATH, ".//td")
+                        temp_entry = {}
+                        if BOOL_DEV_PRINTS:
+                            for test_item in subtable_items:
+                                print(f"\t\t\t - {test_item.text}")
+                        temp_entry["Type"] = temp_type
+                        temp_entry["Day"] = subtable_items[0].text.strip()
+                        temp_entry["Time"] = subtable_items[1].text.strip()
+                        temp_entry["Duration"] = subtable_items[2].text.strip()
+                        temp_entry["Location"] = ' '.join(subtable_items[3].text.split()).strip()
+                        temp_entry["CAT"] = table_main[-3].text.strip()
+                        temp_entry["TA"] = table_main[-2].text.strip()
+                        temp_entry["Num"] = table_main[0].text.split(" ")[-1].strip()
+                        temp_section["Meetings"].append(temp_entry)
+
+            # NOTE: End of loop
+            arr_courses[num]["Sections"].append(temp_section)
         arr_courses_all = arr_courses_all + arr_courses # Add the course code you just did to all course codes
 
     # Output JSON
