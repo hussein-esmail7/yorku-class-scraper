@@ -9,6 +9,7 @@ A Python Selenium program that converts York University course data to JSON
 - [Running the Program](#running-the-program)
 - [Arguments](#arguments)
 	- [What the program asks](#what-the-program-asks)
+	- [Command Arguments](#command-arguments)
 - [Donate](#donate)
 
 ## What is this?
@@ -35,9 +36,11 @@ python3 yorku-scrape.py
 ```
 
 ### Arguments
-At the moment, there is not functionality to input your options right in the
-command line, but this can be added later. At the moment, the program will ask
-you for these options directly after you start it.
+There are two options to input your arguments into this program:
+1. When the program asks for it if it is not given in the Terminal, or
+2. In the Terminal. See [Command Arguments](#command-arguments) for the ways to
+   put it in.
+
 
 #### What the program asks
 1. `Semester`: First the program asks what semester you want to get courses
@@ -54,6 +57,18 @@ you for these options directly after you start it.
    courses in case it takes a while so you don't have to sit at your computer
    waiting for it to ask you. At the moment, it only makes a JSON file in the
    same directory as the file.
+
+#### Command Arguments
+- `-h`, `--help`: Help message and exit program.
+- `-o`, `--output`: Input the output JSON file name as a string.
+- `-c`, `--code`: Input the course code(s) you want to get. Examples: EECS,
+  ADMS, EN, ENG, etc. if you are inputting multiple, make sure to have it in
+  quotations. Examples: "EECS ADMS", "EECS, WRIT"
+- `-s`, `--sem`, `--semester`: Input the semester you want as a string
+  (Example: FW, SU)
+- `-q`, `--quiet`: Quiet mode. Only display text when required (progress bars
+  not included, use `--no-progress` for this).
+- `--no-progress`: No progress bars. Independent from `--quiet`.
 
 ## Donate
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/husseinesmail)
