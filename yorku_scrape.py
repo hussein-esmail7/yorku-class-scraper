@@ -98,7 +98,7 @@ def progress_bar(BOOL_PROGRESS, progress, total, msg):
         bar = '\u2588' * int(percent) + '-' * (100 - int(percent))
         print(f"\r|{color_prog}{bar}{color_end}|{percent:.2f}% - {msg}", end="\r")
         if progress == total:
-            print(f"\r|{color_done}{bar}{color_end}|{percent:.2f}%" + " "*10)
+            print(f"\r|{color_done}{bar}{color_end}|{percent:.2f}%" + " "*13)
 
 
 def print_dev(str):
