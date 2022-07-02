@@ -10,6 +10,7 @@ A Python Selenium program that converts York University course data to JSON
 - [Arguments](#arguments)
 	- [What the program asks](#what-the-program-asks)
 	- [Command Arguments](#command-arguments)
+- [Files in this Repository](#files-in-this-repository)
 - [Donate](#donate)
 
 ## What is this?
@@ -69,6 +70,15 @@ There are two options to input your arguments into this program:
 - `-q`, `--quiet`: Quiet mode. Only display text when required (progress bars
   not included, use `--no-progress` for this).
 - `--no-progress`: No progress bars. Independent from `--quiet`.
+
+## Files in this Repository
+- `dict-format.pdf`: PDF of how the JSON is formatted in case you want to make your own program that uses this data (and I recommend you do! I want this repository to help others).
+- `dict-format.tex`: LaTeX source file for `dict-format.pdf`
+- `json/`: This folder contains JSON files I've already created by using this program to potentially save the next person some time.
+- `yorku_scrape.py`: Main Python program
+- `yorku_scrape_v2.py`: A new version of the main Python program that uses the
+  "View Active Course Timetables" page instead of "Search Current Courses
+  By..." -> "Subject"
 
 ## Donate
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/husseinesmail)
