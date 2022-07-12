@@ -107,7 +107,7 @@ def print_dev(str):
         print(f"\t\t\t{str}")
 
 
-def ask_int(question):
+def ask_int(question, max):
     bool_continue_asking_q = True
     ans = ""
     while bool_continue_asking_q:
@@ -116,6 +116,8 @@ def ask_int(question):
             ans = int(ans.strip())
             if ans < 1:
                 print(f"{str_prefix_err} Must be a positive number!")
+            elif ans > max:
+                print(f"{str_prefix_err} Your answer cannot exceed {max}!")
             else:
                 bool_continue_asking_q = False
         except:
@@ -183,6 +185,18 @@ def main():
                 BOOL_PROGRESS = False
 
 
+    # Ask the user what they want the output file name to be
+    while len(FILENAME_OUTPUT) == 0:
+        FILENAME_OUTPUT = input(f"{str_prefix_q} What would you like to name the output `.json` file: ")
+        if len(FILENAME_OUTPUT) > 0:
+            if not FILENAME_OUTPUT.endswith(".json"):
+                FILENAME_OUTPUT = FILENAME_OUTPUT + ".json"
+            if not yes_or_no(f"Is '{FILENAME_OUTPUT}' correct? "):
+                FILENAME_OUTPUT = ""
+
+    if not BOOL_QUIET:
+        print(f"{str_prefix_info} Starting...")
+        print(f"\t\t This may take a while. Go drink some water.")
     # START WEB SCRAPER
     options = Options() # Used so we can add the run-in-background option
     if bool_run_in_background:
@@ -202,10 +216,133 @@ def main():
     elem_list_spreadsheets = "" # Replaced with the driver element later
     try:
         elem_list_spreadsheets = driver.find_elements(By.XPATH, "/html/body/table/tbody/tr[2]/td[2]/table/tbody/tr[2]/td/table/tbody/tr/td/a")
-        for num, item in enumerate(elem_list_spreadsheets):
-            print(f"{num}. {item.text}")
+        # for num, item in enumerate(elem_list_spreadsheets):
+        #     print(f"{num}. {item.text}")
     except:
         print(f"{str_prefix_err} Cannot get spreadsheet list!")
+
+    # TODO: CONTINUE HERE
+    if len(elem_list_spreadsheets) != 0:
+        # If there is at least 1 item in the list
+        # Determine the years and semesters of the spreadsheets
+        sem_opts = []
+        for item in elem_list_spreadsheets:
+            item_text = item.text.split(" ")[1:3] # ['Summer' OR 'Fall/Winter', '2022' OR '2022/2023']
+            sem_opts.append(" ".join(item_text))
+        sem_opts = list(dict.fromkeys(sem_opts))
+        # print(sem_opts)
+        sem_choice = -1
+        if len(sem_opts) == 1:
+            # If there is only one semester choice, automatically choose it
+            print(f"{str_prefix_info} '{sem_opts[0]}' only option")
+            sem_choice = 0
+        else:
+            for num, item in enumerate(sem_opts):
+                print(f"{num+1}. {item}")
+            sem_choice = ask_int("Which semester would you like to get?", len(sem_opts)) - 1
+        spreadsheet_urls = []
+        for spreadsheet in elem_list_spreadsheets:
+            if sem_opts[sem_choice] in spreadsheet.text:
+                # If the spreadsheet is for the chosen semester
+                spreadsheet_urls.append(spreadsheet.get_attribute('href'))
+        all_rows = []
+        for url in spreadsheet_urls:
+            print(f"Getting {url.split('/')[-1].split('.')[0]} ...")
+            driver.get(url)
+            # Wait until this element is gotten:
+            driver.find_element(By.XPATH, "/html/body/p[6]")
+            # When the above element is loaded, then the whole page is loaded
+            table = driver.find_element(By.XPATH, "/html/body/table/tbody")
+            """
+            Columns:
+            1. Faculty (2 letters)
+            2. Department (2-4 letters)
+            3. Term (1-2 characters)
+            4. Course ID (title of new course, else 4 num + credits + section)
+            5. LOI: Language of instruction (EN/FR)
+            6. Type: LECT/ONLN/LAB/etc
+            7. Meet: # of Type. Ex: "01" of "LECT 01"
+            8. CAT (6 characters or "Cancelled")
+            9. Subtable:
+                i. Day
+                ii. Time
+                iii. Duration
+                iv. Room
+            10. Instructors
+            11. Notes/Additional Fees
+            """
+            for tr in table.find_elements(By.XPATH, "/tr")[1:]:
+                # Do not get the very first one because that is column names
+                cells = tr.find_elements(By.XPATH, "/td")
+                row_text = []
+                for cell in cells:
+                    row_text.append(cell.text)
+                all_rows.append(row_text)
+        print(all_rows)
+        # At this point, you have all table data of the different pages,
+        # Now you have to format it to JSON
+        # These variables are gotten from each 'title' row
+        current_dept = ""
+        current_code = ""
+        current_term = ""
+        current_title = ""
+        course_current = {} # Started at title row, edited during course rows
+        for row in all_rows:
+            if row[0].strip() == "" and "Cancelled" not in row[5]:
+                if not BOOL_QUIET and course_current["Num"] == "":
+                    # Let user know what course the program is parsing
+                    print(f"{str_prefix_info} {course_current['Department']} {row[1].split(' ')[0]}")
+
+                # It is a course row that is not cancelled
+                # 0: Nothing
+                # 1: 4 numbers + Credits (_.__ format) + Section
+                # 2: Language
+                # 3: Type (LECT, ONLN, etc.)
+                # 4: Type Num
+                # 5: CAT or "Cancelled" (with space, make sure to strip)
+                # 6: Day + Time + Duration + Room (single day, each entry is a different day, never 2 days in same row)
+                # 7: Day
+                # 8: Time
+                # 9: Duration
+                # 10: Building + Room
+                # 11: Instructor
+                # 12: Course outline URL
+                row[1] = row[1].replace("  ", " ") # Replace all double spaces
+                course_current["Num"] = row[1].strip().split(" ")[0] # 4 digits
+                course_current["Credits"] = row[1].strip().split(" ")[1] # _.__
+                course_current["Language"] = row[2] # Language taught (ex. EN)
+                course_current["Meetings"].append({
+                    "Section": row[1].strip().split(" ")[2], # A, B, etc.
+                    "Type": row[3], # LECT, ONLN, etc.
+                    "CAT": row[5].strip(), # 6 characters
+                    "Day": row[7].strip(), # "M", "T", "W", "R", "F" (only 1)
+                    "Time": row[8].strip(), # Ex. "13:00"
+                    "Duration": row[9].strip(), # Ex. "180" (minutes)
+                    "Location": row[10].strip(), # Ex. "DB 0011"
+                    "Instructor": row[11].strip() # Prof/TA name
+                })
+
+            else:
+                # It is a 'title' row
+                # Add the previous course as it is now done
+                # (if there was a previous)
+                if course_current != {}:
+                    all_courses.append(course_current)
+                course_current = {} # Reset the working variable
+                current_dept = row[0] # AP, LE, GS, etc.
+                current_code = row[1] # ADMS, EECS, ENG, etc.
+                current_term = row[2] # F, Y, W, SU, S1, etc.
+                current_title = row[3] # Course title for the rows below
+                course_current["Department"] = row[0].strip()
+                course_current["Code"] = row[1].strip() # ADMS, EECS, ENG, etc.
+                course_current["Term"] = row[2].strip() # F, W, Y, S1, etc.
+                course_current["Title"] = row[3].strip() # Title for rows below
+                # Below: Resetting for the course rows
+                course_current["Num"] = ""
+                course_current["Credits"] = ""
+                course_current["Language"] = ""
+                course_current["Meetings"] = []
+
     sys.exit()
 
 
@@ -294,9 +431,6 @@ def main():
             if not yes_or_no(f"Is '{FILENAME_OUTPUT}' correct? "):
                 FILENAME_OUTPUT = ""
 
-    if not BOOL_QUIET:
-        print(f"{str_prefix_info} Starting...")
-    # Iterate through every course choice
     if not BOOL_QUIET:
         print(f"\t  Getting lists of courses...")
     progress_bar(BOOL_PROGRESS, 0, len(course_choices), course_choices[0])
