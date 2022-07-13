@@ -374,7 +374,6 @@ def main():
                         "Location": course_location, # Ex. "DB 0011"
                         "Instructor": row[5].strip() # Prof/TA name
                     }])
-
             else:
                 # It is a 'title' row
                 # Add the previous course as it is now done
@@ -392,15 +391,19 @@ def main():
                 course_current["Term"] = row[2].strip() # F, W, Y, S1, etc.
                 course_current["Title"] = row[3].strip() # Title for rows below
                 # Below: Resetting for the course rows
-                course_current["Num"] = ""
-                course_current["Credits"] = ""
-                course_current["Language"] = ""
-                course_current["Meetings"] = []
-                current_section = ""
+                course_current["Num"] = "" # The "1001" from "EECS 1001"
+                course_current["Credits"] = "" # _.__ format
+                course_current["Language"] = "" # Language course is taught in
+                course_current["Meetings"] = [] # Individual time occurences
+                current_section = "" # A, B, C, Z, etc.
                 if not BOOL_QUIET and course_current["Num"] == "":
                     # Let user know what course the program is parsing
                     print(f"{str_prefix_info} {course_current['Department']}/{course_current['Code']} {row[1].split(' ')[0]}")
+    # Final version
     print(all_courses)
+    # Output JSON
+    final = json.dumps(arr_courses, indent=4)
+    open(FILENAME_OUTPUT, "w").writelines(final)
     # Cleanup
     driver.close()  # Close the browser
     options.extensions.clear() # Clear the options that were set
@@ -408,7 +411,6 @@ def main():
     # NOTE: END OF PROGRAM
 
     """
-
     if len(course_choices) != 0: # If courses were already preselected
         course_choices = verify_course_choices(course_choices, course_codes_all)
     else:
