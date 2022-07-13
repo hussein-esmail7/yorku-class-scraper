@@ -196,7 +196,6 @@ def main():
 
     if not BOOL_QUIET:
         print(f"{str_prefix_info} Starting...")
-        print(f"\t\t This may take a while. Go drink some water.")
     # START WEB SCRAPER
     options = Options() # Used so we can add the run-in-background option
     if bool_run_in_background:
@@ -221,7 +220,6 @@ def main():
     except:
         print(f"{str_prefix_err} Cannot get spreadsheet list!")
 
-    # TODO: CONTINUE HERE
     if len(elem_list_spreadsheets) != 0:
         # If there is at least 1 item in the list
         # Determine the years and semesters of the spreadsheets
@@ -238,21 +236,29 @@ def main():
             sem_choice = 0
         else:
             for num, item in enumerate(sem_opts):
-                print(f"{num+1}. {item}")
+                print(f"\t  {num+1}. {item}")
             sem_choice = ask_int("Which semester would you like to get?", len(sem_opts)) - 1
+        if not BOOL_QUIET:
+            print(f"\t  This may take a while. Go drink some water.")
         spreadsheet_urls = []
         for spreadsheet in elem_list_spreadsheets:
             if sem_opts[sem_choice] in spreadsheet.text:
                 # If the spreadsheet is for the chosen semester
                 spreadsheet_urls.append(spreadsheet.get_attribute('href'))
         all_rows = []
+
+        # TODO: Developer use only =====
+        spreadsheet_urls = [spreadsheet_urls[0]]
+
         for url in spreadsheet_urls:
-            print(f"Getting {url.split('/')[-1].split('.')[0]} ...")
+            if not BOOL_QUIET:
+                print(f"\t  Getting {url.split('/')[-1].split('.')[0]}...")
             driver.get(url)
             # Wait until this element is gotten:
             driver.find_element(By.XPATH, "/html/body/p[6]")
             # When the above element is loaded, then the whole page is loaded
             table = driver.find_element(By.XPATH, "/html/body/table/tbody")
+            print("\t  Found table element")
             """
             Columns:
             1. Faculty (2 letters)
@@ -264,21 +270,24 @@ def main():
             7. Meet: # of Type. Ex: "01" of "LECT 01"
             8. CAT (6 characters or "Cancelled")
             9. Subtable:
-                i. Day
-                ii. Time
+                i.   Day
+                ii.  Time
                 iii. Duration
-                iv. Room
+                iv.  Room
             10. Instructors
             11. Notes/Additional Fees
             """
-            for tr in table.find_elements(By.XPATH, "/tr")[1:]:
+            trs = table.find_elements(By.XPATH, "tr")[1:]
+            print(f"\t  Amount of 'tr's: {len(trs)}")
+            for tr in trs:
                 # Do not get the very first one because that is column names
-                cells = tr.find_elements(By.XPATH, "/td")
+                cells = tr.find_elements(By.XPATH, "td")
                 row_text = []
                 for cell in cells:
                     row_text.append(cell.text)
                 all_rows.append(row_text)
-        print(all_rows)
+                # print(row_text)
+        # print(all_rows)
         # At this point, you have all table data of the different pages,
         # Now you have to format it to JSON
         # These variables are gotten from each 'title' row
@@ -286,12 +295,13 @@ def main():
         current_code = ""
         current_term = ""
         current_title = ""
+        current_section = "" # Set during lecture and reused when a TUTR happens
         course_current = {} # Started at title row, edited during course rows
+        all_courses = []
         for row in all_rows:
-            if row[0].strip() == "" and "Cancelled" not in row[5]:
-                if not BOOL_QUIET and course_current["Num"] == "":
-                    # Let user know what course the program is parsing
-                    print(f"{str_prefix_info} {course_current['Department']} {row[1].split(' ')[0]}")
+            print(f"ROW: {len(row)}, {row}")
+            if len(row) == 9 and "Cancelled" not in row[5]:
+                # Lecture type (not counting TUTR)
 
                 # It is a course row that is not cancelled
                 # 0: Nothing
@@ -308,19 +318,62 @@ def main():
                 # 11: Instructor
                 # 12: Course outline URL
                 row[1] = row[1].replace("  ", " ") # Replace all double spaces
+                row[4] = row[4].replace("  ", " ") # Replace all double spaces
+                row[5] = row[5].replace("  ", " ") # Replace all double spaces
+                row[6] = row[6].replace("  ", " ") # Replace all double spaces
+
+                current_section = row[1].strip().split(" ")[-1], # A, B, etc.
+                if row[3] == "ONLN":
+                    # Online course has less parameters
+                    course_duration = "0"
+                    course_time = "0:00"
+                    course_location = ""
+                    course_day = ""
+                else:
+                    course_duration = row[6].split(" ")[2]
+                    course_time = row[6].split(" ")[1]
+                    course_location = " ".join(row[6].split(" ")[3:])
+                    course_day = row[6].split(" ")[0]
+
                 course_current["Num"] = row[1].strip().split(" ")[0] # 4 digits
                 course_current["Credits"] = row[1].strip().split(" ")[1] # _.__
                 course_current["Language"] = row[2] # Language taught (ex. EN)
-                course_current["Meetings"].append({
-                    "Section": row[1].strip().split(" ")[2], # A, B, etc.
+                course_current["Meetings"].append([{
+                    "Section": current_section,
                     "Type": row[3], # LECT, ONLN, etc.
                     "CAT": row[5].strip(), # 6 characters
-                    "Day": row[7].strip(), # "M", "T", "W", "R", "F" (only 1)
-                    "Time": row[8].strip(), # Ex. "13:00"
-                    "Duration": row[9].strip(), # Ex. "180" (minutes)
-                    "Location": row[10].strip(), # Ex. "DB 0011"
-                    "Instructor": row[11].strip() # Prof/TA name
-                })
+                    "Day": course_day, # "M", "T", "W", "R", "F" (only 1)
+                    "Time": course_time, # Ex. "13:00"
+                    "Duration": course_duration, # Ex. "180" (minutes)
+                    "Location": course_location, # Ex. "DB 0011"
+                    "Instructor": row[7].strip() # Prof/TA name
+                }])
+            elif row[1].strip() == "TUTR" and "Cancelled" not in row[3]:
+                # TUTR
+                row[0] = row[0].replace("  ", " ") # Replace all double spaces
+                row[1] = row[1].replace("  ", " ") # Replace all double spaces
+                row[2] = row[2].replace("  ", " ") # Replace all double spaces
+                row[3] = row[3].replace("  ", " ") # Replace all double spaces
+                row[4] = row[4].replace("  ", " ") # Replace all double spaces
+                row[5] = row[5].replace("  ", " ") # Replace all double spaces
+                row[6] = row[6].replace("  ", " ") # Replace all double spaces
+                meet_times_unformatted = row[4].split("\n")
+                for item in meet_times_unformatted:
+                    course_duration = item.split(" ")[2]
+                    course_time = item.split(" ")[1]
+                    course_location = " ".join(item.split(" ")[3:])
+                    course_day = item.split(" ")[0]
+                    course_current["Meetings"].append([{
+                        "Section": current_section,
+                        "Type": "TUTR",
+                        "Num": row[2].strip(),
+                        "CAT": row[3].strip(), # 6 characters
+                        "Day": course_day, # "M", "T", "W", "R", "F" (only 1)
+                        "Time": course_time, # Ex. "13:00"
+                        "Duration": course_duration, # Ex. "180" (minutes)
+                        "Location": course_location, # Ex. "DB 0011"
+                        "Instructor": row[5].strip() # Prof/TA name
+                    }])
 
             else:
                 # It is a 'title' row
@@ -328,6 +381,7 @@ def main():
                 # (if there was a previous)
                 if course_current != {}:
                     all_courses.append(course_current)
+                    print(course_current)
                 course_current = {} # Reset the working variable
                 current_dept = row[0] # AP, LE, GS, etc.
                 current_code = row[1] # ADMS, EECS, ENG, etc.
@@ -342,64 +396,19 @@ def main():
                 course_current["Credits"] = ""
                 course_current["Language"] = ""
                 course_current["Meetings"] = []
+                current_section = ""
+                if not BOOL_QUIET and course_current["Num"] == "":
+                    # Let user know what course the program is parsing
+                    print(f"{str_prefix_info} {course_current['Department']}/{course_current['Code']} {row[1].split(' ')[0]}")
+    print(all_courses)
+    # Cleanup
+    driver.close()  # Close the browser
+    options.extensions.clear() # Clear the options that were set
+    sys.exit() # Exit the program
+    # NOTE: END OF PROGRAM
 
-    sys.exit()
+    """
 
-
-    # Asks what semester they want
-    if term_use == "":
-        # Print the options and ask the user which one they want
-        print(f"{str_prefix_info} Semesters list")
-        for num, item in enumerate(list_semesters):
-            print(f"\t  {num+1}. {item.text}")
-        # If the user wants to iterate multiple semesters, they would have to run
-        # this program multiple times
-        num_semester = ask_int("Which semester to iterate:") -1
-        # Convert the selected option's text to get the year
-        # Formats:
-        #   "Summer 2022"
-        #   "Fall/Winter 2021-2022"
-        # .split("-") is there in case a FW option is selected, need to calculate
-        #   which semester is needed per section of a course (can be offered in
-        #   both semesters).
-    else:
-        term_options = [] # Int array of semester indexes
-        # This is used in case there are 2 FW options, like during the summer
-        for num, item in enumerate(list_semesters):
-            if term_use in item.text:
-                term_options.append(num)
-        if len(term_options) == 0:
-            print(f"{str_prefix_err} No {term_use} options available")
-        elif len(term_options) > 1:
-            print(f"{str_prefix_info} Multiple semester options found!")
-            for num, item in enumerate(term_options):
-                print(f"\t  {num+1}. {list_semesters[item]}")
-            bool_accepted_input = False
-            while not bool_accepted_input:
-                temp = ask_int("Which semester do you want to use?")
-                if len(term_options) > temp:
-                    num_semester = term_options[temp]
-                    bool_accepted_input = True
-                else:
-                    print(f"{str_prefix_err} Invalid number!")
-        else:
-            num_semester = term_options[0]
-
-
-
-    semester_year = list_semesters[num_semester].text.split(" ")[-1].split("-")
-
-    list_semesters_box.select_by_value(str(num_semester))
-    # Find the semester option box
-    list_depts_box_orig = driver.find_element(By.ID, "subjectSelect")
-    # Convert the semester option box to something interactable
-    list_depts_box = Select(list_depts_box_orig)
-    # Get the possible semester values
-    list_depts = driver.find_element(By.ID, "subjectSelect").find_elements(By.XPATH, ".//*")
-    # Print the options and ask the user which one they want
-    bool_valid_input = False
-    # 2-4 letter course codes only
-    course_codes_all = [code.text.split(" ")[0].upper() for code in list_depts]
     if len(course_choices) != 0: # If courses were already preselected
         course_choices = verify_course_choices(course_choices, course_codes_all)
     else:
@@ -422,39 +431,6 @@ def main():
                 else:
                     bool_valid_input = True
 
-    # Ask the usre what they want the output file name to be
-    while len(FILENAME_OUTPUT) == 0:
-        FILENAME_OUTPUT = input(f"{str_prefix_q} What would you like to name the output `.json` file: ")
-        if len(FILENAME_OUTPUT) > 0:
-            if not FILENAME_OUTPUT.endswith(".json"):
-                FILENAME_OUTPUT = FILENAME_OUTPUT + ".json"
-            if not yes_or_no(f"Is '{FILENAME_OUTPUT}' correct? "):
-                FILENAME_OUTPUT = ""
-
-    if not BOOL_QUIET:
-        print(f"\t  Getting lists of courses...")
-    progress_bar(BOOL_PROGRESS, 0, len(course_choices), course_choices[0])
-    for course_iteration_num, course_number in enumerate(course_choices):
-        try: # Attempt to get the URL
-            # Go back to the main site and pick the next course
-            if course_iteration_num != 0:
-                driver.get(target_site)
-                try:
-                    driver.find_element(By.XPATH, "/html/body/table/tbody/tr[2]/td/a[1]").click()
-                    driver.find_element(By.XPATH, "/html/body/p/table/tbody/tr[2]/td[2]/table/tbody/tr[2]/td/table/tbody/tr/td/ul/li[1]/ul/li[1]/a").click()
-                except NoSuchElementException:
-                    pass
-                # Select the box where you can pick the semesters (FW 2021-22, SU 22, etc.)
-                list_semesters_box = Select(driver.find_element(By.ID, "sessionSelect"))
-                list_semesters_box.select_by_value(str(num_semester))
-                # Find the semester option box
-                list_depts_box_orig = driver.find_element(By.ID, "subjectSelect")
-                # Convert the semester option box to something interactable
-                list_depts_box = Select(list_depts_box_orig)
-            # Select the course code from the Select box
-            list_depts_box.select_by_value(str(course_number))
-            # Press the "Search Courses" button
-            button_submit = driver.find_element(By.XPATH, "/html/body/table/tbody/tr[2]/td[2]/table/tbody/tr[2]/td/table/tbody/tr/td/form/table/tbody/tr[3]/td[2]/input").click()
 
             # At this point, the department page contains a large table with each
             # course, title, and URL. This section gets the table data and puts it into
@@ -616,6 +592,7 @@ def main():
     driver.close()  # Close the browser
     options.extensions.clear() # Clear the options that were set
     sys.exit() # Exit the program
+    """
 
 if __name__ == "__main__":
     main()
