@@ -72,13 +72,23 @@ There are two options to input your arguments into this program:
 - `--no-progress`: No progress bars. Independent from `--quiet`.
 
 ## Files in this Repository
-- `dict-format.pdf`: PDF of how the JSON is formatted in case you want to make your own program that uses this data (and I recommend you do! I want this repository to help others).
+- `dict-format.pdf`: PDF of how the JSON is formatted in case you want to make
+  your own program that uses this data (and I recommend you do! I want this
+  repository to help others).
 - `dict-format.tex`: LaTeX source file for `dict-format.pdf`
-- `json/`: This folder contains JSON files I've already created by using this program to potentially save the next person some time.
+- `json/`: This folder contains JSON files I've already created by using this
+  program to potentially save the next person some time.
 - `yorku_scrape.py`: Main Python program
 - `yorku_scrape_v2.py`: A new version of the main Python program that uses the
   "View Active Course Timetables" page instead of "Search Current Courses
   By..." -> "Subject"
+- `yorku_scrape_v2_offline.py`: Based off of `yorku_scrape_v2.py`, where it
+  reads from an offline HTML file instead of keeping the YorkU website open the
+  entire time. This was useful when I was testing this program when I didn't
+  have internet (with the downloaded HTML files). Uses the `html/` folder.
+- `yorku_scrape_v3.py`: I realized that Selenium is the reason the program is
+  taking so long, so this version is my attempt at switching to `BeautifulSoup`
+  and `lxml` which is much faster.
 
 ## Donate
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/husseinesmail)
