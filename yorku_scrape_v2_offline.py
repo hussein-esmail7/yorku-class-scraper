@@ -135,7 +135,7 @@ def main():
     FILENAME_OUTPUT = "" # JSON output file name. Changed by user later
     term_use = "" # User selected term to get. Choice required when empty
     times = [] # Runtimes for each course
-    html_folder = "/Users/hussein/Downloads/scraper/html/"
+    html_folder = os.path.expanduser("~/git/yorku-class-scraper/html/")
     row_multiplier = 0.25 # Roughly how long the program takes to process 1 row (in seconds)
     # Local file paths
     spreadsheet_urls = [f"file://{html_folder}" + i for i in os.listdir(html_folder)]
@@ -255,8 +255,8 @@ def main():
         current_section = "" # Set during lecture and reused when a TUTR happens
         course_current = {} # Started at title row, edited during course rows
         all_courses = []
-        if not all_rows[0][0] == "The course timetables for this Faculty have not been released yet.":
-            for row in all_rows:
+        for row in all_rows:
+            if not row[0] == "The course timetables for this Faculty have not been released yet.":
                 if not BOOL_QUIET:
                     print(f"ROW: {len(row)}, {row}")
                 if len(row) == 9 and "Cancelled" not in row[5]:
