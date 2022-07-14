@@ -242,8 +242,7 @@ def main():
             times.append(f"{time.time() - t_start}") # Documentation purposes
             time_estimate = time_str(int(round((total_progress - progress_current) * row_multiplier, 0)))
             progress_bar(BOOL_PROGRESS, INT_PROGRESS_BAR_LEN, progress_current, total_progress, time_estimate)
-            # print(f"Time for row {num}: {round(time.time() - t_start, 2)}s")
-            # print(row_text)
+            # print(all_rows[-1])
         # print(all_rows)
         # At this point, you have all table data of the different pages,
         # Now you have to format it to JSON
