@@ -82,10 +82,11 @@ There are two options to input your arguments into this program:
 - `yorku_scrape_v2.py`: A new version of the main Python program that uses the
   "View Active Course Timetables" page instead of "Search Current Courses
   By..." -> "Subject"
-- `yorku_scrape_v2_offline.py`: Based off of `yorku_scrape_v2.py`, where it
-  reads from an offline HTML file instead of keeping the YorkU website open the
-  entire time. This was useful when I was testing this program when I didn't
-  have internet (with the downloaded HTML files). Uses the `html/` folder.
+- `yorku_scrape_v2_offline.py`: Based off of `yorku_scrape_v2.py` and
+  `bs4version.py`, where it reads from an offline HTML file instead of keeping
+  the YorkU website open the entire time. This was useful when I was testing
+  this program when I didn't have internet (with the downloaded HTML files).
+  Uses the `html/` folder.
 - `yorku_scrape_v3.py`: I realized that Selenium is the reason the program is
   taking so long, so this version is my attempt at switching to `BeautifulSoup`
   and `lxml` which is much faster.

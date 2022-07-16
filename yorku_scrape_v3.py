@@ -10,7 +10,8 @@ import json     # Used to parse output
 import os
 import re       # Used to separate some data
 import sys      # Used to exit the program
-import time     # Used for tracking how long the program is taking
+import time as t # Used for tracking how long the program is taking
+from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.common.exceptions import *
 from webdriver_manager.chrome import ChromeDriverManager
@@ -59,6 +60,67 @@ str_prefix_err          = f"[{color_red}ERROR{color_end}]\t "
 str_prefix_done         = f"[{color_green}DONE{color_end}]\t "
 str_prefix_info         = f"[{color_cyan}INFO{color_end}]\t "
 str_prefix_warn         = f"[{color_yellow}WARN{color_end}]\t "
+str_prefix_dev          = f"[{color_red}DEV{color_end}]\t "
+
+def nth_occur(input_str, occurence_num, substring_find):
+    int_occur = -1
+    for i in range(0, occurence_num):
+        int_occur = input_str.find(substring_find, int_occur+1)
+    return int_occur
+
+def time_location_formatted(input_str):
+    """
+    0: Weekday
+    ":"+2: time
+    until letter: duration
+    rest: room
+    """
+    weekday = input_str[0]
+    input_str = input_str[1:]
+    time = input_str[:input_str.index(":")+3].strip()
+    input_str = input_str[len(time):]
+    indexofLetter = -1
+    for num, i in enumerate(input_str):
+        if i.isalpha() and indexofLetter == -1:
+            indexofLetter = num
+    if indexofLetter == -1:
+        # If there are no more letters, everything is part of the duration
+        # and there is no prof
+        duration = input_str.strip()
+        room = ""
+        prof = ""
+    else:
+        duration = input_str[:indexofLetter].strip()
+        input_str = input_str[indexofLetter:].replace("  ", " ")
+        # secondSpace = " ".join(input_str.split(" ")[1:]).indexOf(" ")
+        secondSpace = nth_occur(input_str, 2, " ")
+        if secondSpace == -1:
+            secondSpace = len(input_str)
+        room = input_str[:secondSpace+1].strip() # Building + Room number
+        prof = input_str[secondSpace+1:].strip() # Whatever is after the room
+        # input_str = f"{weekday} {time} {duration} {room} {prof}"
+    return [weekday, time, duration, room, prof]
+
+def get_table_contents(filepath):
+    if filepath.endswith(".html"):
+        index = open(filepath.replace("file://", ""), 'rb').read() # Get contents of file
+        S = BeautifulSoup(index, 'lxml') # Make bs4 object using lxml parser
+        Attr = S.html.body.table.tbody # Locating table row elements
+        # Using the Children attribute to get the children of a tag
+        # Only contain tag names and not the spaces
+        Attr_Tag = [e.text.replace("\n", "\xa0").split("\xa0") for e in Attr.children if e.name is not None]
+        # Attr_Tag = [e.text for e in Attr.children if e.name is not None]
+        Attr_Tag.pop(0) # Delete the first row that shows the titles per column
+        for num, i in enumerate(Attr_Tag):
+            for num_ii, ii in enumerate(Attr_Tag[num]):
+                Attr_Tag[num][num_ii] = Attr_Tag[num][num_ii].strip()
+
+            # Delete all empty strings inside each row, so that each element means something
+        #     Attr_Tag[num] = [item.strip() for item in Attr_Tag[num] if item != ""]
+        if not Attr_Tag[0][0] == "The course timetables for this Faculty have not been released yet.":
+            return Attr_Tag
+    return []
+
 
 def yes_or_no(str_ask):
     while True:
@@ -134,11 +196,11 @@ def main():
     BOOL_PROGRESS              = True # False if user turns off progress bars
     FILENAME_OUTPUT = "" # JSON output file name. Changed by user later
     term_use = "" # User selected term to get. Choice required when empty
-    times = [] # Runtimes for each course
+    runtimes = [] # Runtimes for each course
     html_folder = os.path.expanduser("~/git/yorku-class-scraper/html/")
     row_multiplier = 0.25 # Roughly how long the program takes to process 1 row (in seconds)
     # Local file paths
-    spreadsheet_urls = [f"file://{html_folder}" + i for i in os.listdir(html_folder)]
+    filepaths = [f"file://{html_folder}" + i for i in os.listdir(html_folder)]
     all_rows = [] # Row text will be placed here
 
     # USER ARGUMENT PARSING
@@ -183,181 +245,166 @@ def main():
                 FILENAME_OUTPUT = ""
 
     bool_print_times = yes_or_no("Print times after file is done? ")
-
-    if not BOOL_QUIET:
-        print(f"{str_prefix_info} Starting...")
-    # START WEB SCRAPER
-    options = Options() # Used so we can add the run-in-background option
-    if bool_run_in_background:
-        options.add_argument("--headless")  # Hides the window
-    try:
-        # This line won't work if you don't have internet
-        service = Service(ChromeDriverManager(log_level=0).install())
-        driver = webdriver.Chrome(service=service, options=options)
-    except:
-        driver = webdriver.Chrome(options=options)
-        pass
-    # driver.set_window_size(400, 1000) # Window size
-    driver.implicitly_wait(15) # Timeout 10s when getting any element or page
-    # Go to the main page with all the view options like timetable, exam
-    # schedule, etc.
+    t_start = t.time() # Documentation purposes, resetting timer
 
     # Used for progress bar
-    total_progress = 0 # Addition of all row numbers for all spreadsheets
+    # TODO: Convert loop to bs4
     progress_current = 0 # What row number out of all spreadsheets you're on
-    for url in spreadsheet_urls:
-        driver.get(url)
-        trs = driver.find_elements(By.XPATH, "/html/body/table/tbody/tr")[1:]
-        total_progress += len(trs)
-    print(f"{str_prefix_info} {total_progress} rows, ~{time_str(int(total_progress*row_multiplier))}")
-
+    for filepath in filepaths:
+        trs = get_table_contents(filepath)
+        # Column title row (for reference):
+        """
+        0: 'Fac'
+        1: 'Dept'
+        2: 'Term'
+        3: 'Course ID'
+        4: 'LOI'
+        5: 'Type'
+        6: 'Meet'
+        7: 'Cat.No.'
+        8: 'DayTimeDurationRoom'
+        9: 'Instructors'
+        10: 'Notes/Additional Fees'
+        11: ''
+        """
+        all_rows = all_rows + trs
     # Actually iterate the tables
-    for url in spreadsheet_urls:
-        # print(f"\t  Getting {url.split('/')[-1].split('.')[0]}...")
-        driver.get(url)
-        """
-        Columns:
-        1. Faculty (2 letters)
-        2. Department (2-4 letters)
-        3. Term (1-2 characters)
-        4. Course ID (title of new course, else 4 num + credits + section)
-        5. LOI: Language of instruction (EN/FR)
-        6. Type: LECT/ONLN/LAB/etc
-        7. Meet: # of Type. Ex: "01" of "LECT 01"
-        8. CAT (6 characters or "Cancelled")
-        9. Subtable:
-            i.   Day
-            ii.  Time
-            iii. Duration
-            iv.  Room
-        10. Instructors
-        11. Notes/Additional Fees
-        """
-        trs = driver.find_elements(By.XPATH, "/html/body/table/tbody/tr")[1:]
-        # "[1:]" explanation: Column names row, not actually part of courses
-        for num, tr in enumerate(trs):
-            progress_current += 1
-            t_start = time.time() # Documentation purposes, resetting timer
-            all_rows.append([cell.text for cell in tr.find_elements(By.XPATH, "td")])
-            times.append(f"{time.time() - t_start}") # Documentation purposes
-            time_estimate = time_str(int(round((total_progress - progress_current) * row_multiplier, 0)))
-            progress_bar(BOOL_PROGRESS, INT_PROGRESS_BAR_LEN, progress_current, total_progress, time_estimate)
-            # print(all_rows[-1])
-        # print(all_rows)
-        # At this point, you have all table data of the different pages,
-        # Now you have to format it to JSON
-        # These variables are gotten from each 'title' row
-        current_dept = ""
-        current_code = ""
-        current_term = ""
-        current_title = ""
-        current_section = "" # Set during lecture and reused when a TUTR happens
-        course_current = {} # Started at title row, edited during course rows
-        all_courses = []
-        for row in all_rows:
-            if not row[0] == "The course timetables for this Faculty have not been released yet.":
-                if not BOOL_QUIET:
-                    print(f"ROW: {len(row)}, {row}")
-                if len(row) == 9 and "Cancelled" not in row[5]:
-                    # Lecture type (not counting TUTR)
-                    # It is a course row that is not cancelled
-                    # 0: Nothing
-                    # 1: 4 numbers + Credits (_.__ format) + Section
-                    # 2: Language
-                    # 3: Type (LECT, ONLN, etc.)
-                    # 4: Type Num
-                    # 5: CAT or "Cancelled" (with space, make sure to strip)
-                    # 6: Day + Time + Duration + Room (single day, each entry is a different day, never 2 days in same row)
-                    # 7: Day
-                    # 8: Time
-                    # 9: Duration
-                    # 10: Building + Room
-                    # 11: Instructor
-                    # 12: Course outline URL
-                    row[1] = row[1].replace("  ", " ") # Replace double spaces
-                    row[4] = row[4].replace("  ", " ") # Replace double spaces
-                    row[5] = row[5].replace("  ", " ") # Replace double spaces
-                    row[6] = row[6].replace("  ", " ") # Replace double spaces
+    # TODO: Convert loop to bs4
+    """
+    Columns - OLD:
+    1. Faculty (2 letters)
+    2. Department (2-4 letters)
+    3. Term (1-2 characters)
+    4. Course ID (title of new course, else 4 num + credits + section)
+    5. LOI: Language of instruction (EN/FR)
+    6. Type: LECT/ONLN/LAB/etc
+    7. Meet: # of Type. Ex: "01" of "LECT 01"
+    8. CAT (6 characters or "Cancelled")
+    9. Subtable:
+        i.   Day
+        ii.  Time
+        iii. Duration
+        iv.  Room
+    10. Instructors
+    11. Notes/Additional Fees
+    """
+    # At this point, you have all table data of the different pages,
+    # Now you have to format it to JSON
+    # These variables are gotten from each 'title' row
+    current_dept = ""
+    current_code = ""
+    current_term = ""
+    current_title = ""
+    current_section = "" # Set during lecture and reused when a TUTR happens
+    course_current = {} # Started at title row, edited during course rows
+    all_courses = []
+    for row in all_rows:
+        progress_current += 1
+        # print(f"{str_prefix_info} Row {progress_current}: {row}")
+        # TODO: What takes the longest here
 
-                    current_section = row[1].strip().split(" ")[-1] # A, B, etc.
-                    meet_times_unformatted = row[6].split("\n")
-                    for item in meet_times_unformatted:
-                        if row[3] == "ONLN":
-                            # Online course has less parameters
-                            course_duration = "0"
-                            course_time = "0:00"
-                            course_location = ""
-                            course_day = ""
-                        else:
-                            course_duration = item.split(" ")[2]
-                            course_time = item.split(" ")[1]
-                            course_location = " ".join(item.split(" ")[3:])
-                            course_day = item.split(" ")[0]
-                        course_current["Num"] = row[1].strip().split(" ")[0] # 4 digits
-                        course_current["Credits"] = row[1].strip().split(" ")[1] # _.__
-                        course_current["Language"] = row[2] # Language taught (ex. EN)
-                        course_current["Meetings"].append({
-                            "Section": current_section,
-                            "Type": row[3].strip(), # LECT, ONLN, etc.
-                            "CAT": row[5].strip(), # 6 characters
-                            "Day": course_day.strip(), # "M", "T", "W", "R", "F" (only 1)
-                            "Time": course_time.strip(), # Ex. "13:00"
-                            "Duration": course_duration.strip(), # Ex. "180" (minutes)
-                            "Location": course_location.strip(), # Ex. "DB 0011"
-                            "Instructor": row[7].strip() # Prof/TA name
-                        })
-                elif ( row[1].strip() == "TUTR" or row[1].strip() == "LAB" ) and "Cancelled" not in row[3]:
-                    # TUTR or LAB
-                    row[0] = row[0].replace("  ", " ") # Replace double spaces
-                    row[1] = row[1].replace("  ", " ") # Replace double spaces
-                    row[2] = row[2].replace("  ", " ") # Replace double spaces
-                    row[3] = row[3].replace("  ", " ") # Replace double spaces
-                    row[4] = row[4].replace("  ", " ") # Replace double spaces
-                    row[5] = row[5].replace("  ", " ") # Replace double spaces
-                    row[6] = row[6].replace("  ", " ") # Replace double spaces
-                    meet_times_unformatted = row[4].split("\n")
-                    for item in meet_times_unformatted:
-                        course_duration = item.split(" ")[2]
-                        course_time = item.split(" ")[1]
-                        course_location = " ".join(item.split(" ")[3:])
-                        course_day = item.split(" ")[0]
-                        course_current["Meetings"].append({
-                            "Section": current_section,
-                            "Type": row[1].strip(),
-                            "Num": row[2].strip(),
-                            "CAT": row[3].strip(), # 6 characters
-                            "Day": course_day.strip(), # "M", "T", "W", "R", "F" (only 1)
-                            "Time": course_time.strip(), # Ex. "13:00"
-                            "Duration": course_duration.strip(), # Ex. "180" (minutes)
-                            "Location": course_location.strip(), # Ex. "DB 0011"
-                            "Instructor": row[5].strip() # Prof/TA name
-                        })
-                else:
-                    # It is a 'title' row
-                    # Add the previous course as it is now done
-                    # (if there was a previous)
-                    if course_current != {} and len(course_current["Meetings"]) > 0:
-                        # If it is not empty and has meeting occurences
-                        all_courses.append(course_current)
-                        if not BOOL_QUIET:
-                            print(course_current)
-                    course_current = {} # Reset the working variable
-                    current_dept = row[0] # AP, LE, GS, etc.
-                    current_code = row[1] # ADMS, EECS, ENG, etc.
-                    current_term = row[2] # F, Y, W, SU, S1, etc.
-                    current_title = row[3] # Course title for the rows below
-                    course_current["Department"] = row[0].strip()
-                    course_current["Code"] = row[1].strip() # ADMS, EECS, ENG, etc.
-                    course_current["Term"] = row[2].strip() # F, W, Y, S1, etc.
-                    course_current["Title"] = row[3].strip() # Title for rows below
-                    # Below: Resetting for the course rows
-                    course_current["Num"] = "" # The "1001" from "EECS 1001"
-                    course_current["Credits"] = "" # _.__ format
-                    course_current["Language"] = "" # Language course is taught in
-                    course_current["Meetings"] = [] # Individual time occurences
-                    current_section = "" # A, B, C, Z, etc.
-        else:
-            pass
+        # Title row
+        # 0: Empty
+        # 1: Faculty
+        # 2: Course department code ("EECS", "ADMS", etc.)
+        # 3: Term (F, Y, etc.)
+        # 4: Course title
+        # 5: Empty
+
+        # First entry after title row of a course
+        # 0: Empty
+        # 1: Empty
+        # 2: Empty
+        # 3: Course number ("1001" in "EECS 1001")
+        # 4: Number of credits ("_.__" format)
+        # 5: Course section (A, B, etc.)
+        # 6: Empty
+        # 7: Language course is taught in ("EN", "FR", etc.)
+        # 8: Session Type (LECT, TUTR, SEMR, etc.)
+        # 9: Empty
+        # 10: Session Type Number ("01" in "LECT 01")
+        # 11: Empty
+        # 12: Empty
+        # 13: Empty
+        # 14: Weekday, Time, Duration, Location, Prof
+        # 15: Additional Notes
+        # 16: Empty
+
+        # nth entry after first entry row of a course
+        # 0: Empty
+        # 1: Empty
+        # 2: Session Type (LECT, TUTR, SEMR, etc.)
+        # 3: Empty
+        # 4: Session Type Number ("01" in "LECT 01")
+        # 5: Empty
+        # 6: CAT or "Cancelled"
+        # 7: Empty
+        # 8: Weekday, Time, Duration, Location, Prof
+        # 9: Empty
+        # 10: Empty
+        # 11: Additional Notes
+        # 12: Empty
+        if row[3] != "" and row[3].isnumeric() and row[12] != "Cancelled":
+            # First entry after title row of a course
+            current_section = row[5]
+            if row[8] == "ONLN" or len(row[14]) == 0:
+                times = ["", "", "", "", ""]
+            else:
+                times = time_location_formatted(row[14])
+            course_current["Num"] = row[3] # 4 digits
+            course_current["Credits"] = row[4]
+            course_current["Language"] = row[7] # Language taught (ex. EN)
+            course_current["Meetings"].append({
+                "Section": current_section,
+                "Type": row[8],
+                "Num": row[10],
+                "CAT": row[6],
+                "Day": times[0],
+                "Time": times[1],
+                "Duration": times[2],
+                "Location": times[3],
+                "Instructor": times[4]
+            })
+        elif row[1] == "" and row[2] != "" and row[6] != "Cancelled":
+            # nth entry after first entry row of a course
+            # Checks row[1] is empty because otherwise it could be a title row
+            # Title rows have text in row[1]
+            if row[2] == "ONLN" or len(row[8]) == 0:
+                times = ["", "", "", "", ""]
+            else:
+                times = time_location_formatted(row[8])
+            course_current["Meetings"].append({
+                "Section": current_section,
+                "Type": row[2],
+                "Num": row[4],
+                "CAT": row[6],
+                "Day": times[0],
+                "Time": times[1],
+                "Duration": times[2],
+                "Location": times[3],
+                "Instructor": times[4]
+            })
+        elif row[1] != "":
+            # Condition: Faculty perameter is not empty
+            # Title row
+            # Add the previous course as it is now done
+            # (if there was a previous)
+            if course_current != {} and len(course_current["Meetings"]) > 0:
+                # If it is not empty and has meeting occurences
+                all_courses.append(course_current)
+            course_current = {} # Reset the working variable
+            course_current["Department"] = row[1] # AP, LE, GS, FA, etc.
+            course_current["Code"] = row[2] # ADMS, EECS, ENG, etc.
+            course_current["Term"] = row[3] # F, W, Y, S1, etc.
+            course_current["Title"] = row[4] # Title for rows below
+            # Below: Resetting for the course rows
+            course_current["Num"] = "" # The "1001" from "EECS 1001"
+            course_current["Credits"] = "" # _.__ format
+            course_current["Language"] = "" # Language course is taught in
+            course_current["Meetings"] = [] # Individual time occurences
+            current_section = "" # A, B, C, Z, etc.
+        time_estimate = time_str(int(round((len(all_rows) - progress_current) * row_multiplier, 0)))
+        progress_bar(BOOL_PROGRESS, INT_PROGRESS_BAR_LEN, progress_current, len(all_rows), time_estimate)
     # Output JSON
     final = json.dumps(all_courses, indent=4)
     open(FILENAME_OUTPUT, "w").writelines(final)
@@ -365,11 +412,10 @@ def main():
         print(f"{str_prefix_done} JSON file written: {FILENAME_OUTPUT}")
 
     if bool_print_times:
-        print("\n".join(times))
+        t_end = t.time()
+        print(f"Total runtime: {t_end - t_start}s")
 
     # Cleanup
-    driver.close()  # Close the browser
-    options.extensions.clear() # Clear the options that were set
     sys.exit() # Exit the program
     # NOTE: END OF PROGRAM
 
@@ -447,7 +493,7 @@ def main():
         # if not BOOL_QUIET:
         # Each individual course page
         try:
-            t_s = time.time()
+            t_s = t.time()
             driver.get(course_entry["URL"]) # Go to the course page
             course_entry_page_main = driver.find_element(By.XPATH, "/html/body/table/tbody/tr[2]/td[2]/table/tbody/tr[2]/td/table/tbody/tr/td")
             arr_courses[num]["Description"] = course_entry_page_main.find_elements(By.XPATH, ".//p")[4].text # Add course description to entry dictionary
@@ -525,7 +571,7 @@ def main():
                             temp_section["Meetings"].append(temp_entry)
                 # NOTE: End of loop
                 arr_courses[num]["Sections"].append(temp_section)
-            t_e = time.time()
+            t_e = t.time()
             times.append(t_e - t_s)
         except: # Unable to get course
             pass

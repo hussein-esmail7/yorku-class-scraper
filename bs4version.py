@@ -19,33 +19,29 @@ def time_location_formatted(input_str):
             indexofLetter = num + 3
     duration = input_str[:indexofLetter].strip()
     room = input_str[indexofLetter:].strip()
-    input_str = f"{weekday} {time} {duration} {room}"
+    return [weekday, time, duration, room]
+
+def get_table_contents(filepath):
+    if filepath.endswith(".html"):
+        index = open(filepath, 'rb').read() # Get contents of file
+        S = BeautifulSoup(index, 'lxml') # Make bs4 object using lxml parser
+        Attr = S.html.body.table.tbody # Locating table row elements
+        # Using the Children attribute to get the children of a tag
+        # Only contain tag names and not the spaces
+        Attr_Tag = [e.text.replace("\n", "\xa0").split("\xa0") for e in Attr.children if e.name is not None]
+        # Attr_Tag = [e.text for e in Attr.children if e.name is not None]
+        # TODO: print(time_location_formatted("W12:30180ACW 102"))
+        for num, i in enumerate(Attr_Tag):
+            del Attr_Tag[num][0]
+            print(i)
 
 def main():
-    # VARIABLES =====
     FILEPATH_HTML = "~/git/yorku-class-scraper/html/"
     FILEPATH_HTML = os.path.expanduser(FILEPATH_HTML)
     for file in os.listdir(FILEPATH_HTML):
-        if file.endswith(".html"):
-            # Opening the html file
-            HTMLFile = FILEPATH_HTML + file
-            # Reading the file
-            index = open(HTMLFile, 'rb').read()
-            # Creating a BeautifulSoup object and specifying the parser
-            S = BeautifulSoup(index, 'lxml')
-            # Providing the source
-            Attr = S.html.body.table.tbody
-            # Using the Children attribute to get the children of a tag
-            # Only contain tag names and not the spaces
-            Attr_Tag = [e.text.replace("\n", "\xa0").split("\xa0") for e in Attr.children if e.name is not None]
-            # Attr_Tag = [e.text for e in Attr.children if e.name is not None]
-            # Printing the children
-            # print(Attr_Tag)
-            # print(time_location_formatted("W12:30180ACW 102"))
-            # print(time_location_formatted("F9:30180ACE 002"))
-            for num, i in enumerate(Attr_Tag):
-                del Attr_Tag[num][0]
-                print(i)
+        print(get_table_contents(FILEPATH_HTML + file))
+
 
 if __name__ == "__main__":
     main()
+
