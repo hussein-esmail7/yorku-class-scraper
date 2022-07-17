@@ -144,15 +144,24 @@ def progress_bar(BOOL_PROGRESS, INT_PROGRESS_BAR_LEN, progress, total, msg):
         color_prog = color_end # Color to show when in progress
         color_done = color_end # Color to show when complete
         window_width = os.get_terminal_size().columns
+        if len(msg.strip()) != 0:
+            msg = " - " + msg.strip()
         if INT_PROGRESS_BAR_LEN > (window_width - 21):
             # If the window width is smaller, shrink the max bar length
             INT_PROGRESS_BAR_LEN = window_width - 21
-        percent = ((progress) / float(total)) * 100 # Always out of 100 since this is for the number percentage
-        percent_bar = ((progress) / float(total)) * INT_PROGRESS_BAR_LEN # Formatted to width
-        bar = '\u2588' * int(percent_bar) + '-' * (INT_PROGRESS_BAR_LEN - int(percent_bar))
-        print(f"\r|{color_prog}{bar}{color_end}|{percent:.2f}% - {msg}{' '*(10-len(msg))}", end="\r")
-        if progress == total:
-            print(f"\r|{color_done}{bar}{color_end}|{percent:.2f}%" + " "*13)
+        if progress == 0:
+            percent = 0
+            percent_bar = 0
+            bar = '-' * (INT_PROGRESS_BAR_LEN)
+            print(f"\r|{color_prog}{bar}{color_end}|{percent:.2f}%{msg}{' '*(13-len(msg))}", end="\r")
+        else:
+            percent = ((progress) / float(total)) * 100 # Always out of 100 since this is for the number percentage
+            percent_bar = ((progress) / float(total)) * INT_PROGRESS_BAR_LEN # Formatted to width
+            bar = '\u2588' * int(percent_bar) + '-' * (INT_PROGRESS_BAR_LEN - int(percent_bar))
+            if progress == total:
+                print(f"\r|{color_done}{bar}{color_end}|{percent:.2f}%" + " "*13)
+            else:
+                print(f"\r|{color_prog}{bar}{color_end}|{percent:.2f}%{msg}{' '*(13-len(msg))}", end="\r")
 
 def ask_int(question, max):
     bool_continue_asking_q = True
@@ -245,10 +254,10 @@ def main():
                 FILENAME_OUTPUT = ""
 
     bool_print_times = yes_or_no("Print times after file is done? ")
+    progress_bar(BOOL_PROGRESS, INT_PROGRESS_BAR_LEN, 0, len(all_rows), "")
     t_start = t.time() # Documentation purposes, resetting timer
 
     # Used for progress bar
-    # TODO: Convert loop to bs4
     progress_current = 0 # What row number out of all spreadsheets you're on
     for filepath in filepaths:
         trs = get_table_contents(filepath)
@@ -269,7 +278,6 @@ def main():
         """
         all_rows = all_rows + trs
     # Actually iterate the tables
-    # TODO: Convert loop to bs4
     """
     Columns - OLD:
     1. Faculty (2 letters)
@@ -300,8 +308,6 @@ def main():
     all_courses = []
     for row in all_rows:
         progress_current += 1
-        # print(f"{str_prefix_info} Row {progress_current}: {row}")
-        # TODO: What takes the longest here
 
         # Title row
         # 0: Empty
