@@ -75,6 +75,7 @@ def time_location_formatted(input_str):
     until letter: duration
     rest: room
     """
+    print(input_str)
     weekday = input_str[0]
     input_str = input_str[1:]
     time = input_str[:input_str.index(":")+3].strip()
@@ -254,7 +255,7 @@ def main():
                 FILENAME_OUTPUT = ""
 
     bool_print_times = yes_or_no("Print times after file is done? ")
-    progress_bar(BOOL_PROGRESS, INT_PROGRESS_BAR_LEN, 0, len(all_rows), "")
+    # TODO: progress_bar(BOOL_PROGRESS, INT_PROGRESS_BAR_LEN, 0, len(all_rows), "")
     t_start = t.time() # Documentation purposes, resetting timer
 
     # Used for progress bar
@@ -410,7 +411,7 @@ def main():
             course_current["Meetings"] = [] # Individual time occurences
             current_section = "" # A, B, C, Z, etc.
         time_estimate = time_str(int(round((len(all_rows) - progress_current) * row_multiplier, 0)))
-        progress_bar(BOOL_PROGRESS, INT_PROGRESS_BAR_LEN, progress_current, len(all_rows), time_estimate)
+        # TODO: progress_bar(BOOL_PROGRESS, INT_PROGRESS_BAR_LEN, progress_current, len(all_rows), time_estimate)
     # Output JSON
     final = json.dumps(all_courses, indent=4)
     open(FILENAME_OUTPUT, "w").writelines(final)
