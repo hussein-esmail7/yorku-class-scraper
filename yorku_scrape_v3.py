@@ -75,32 +75,30 @@ def time_location_formatted(input_str):
     until letter: duration
     rest: room
     """
-    print(input_str)
-    weekday = input_str[0]
-    input_str = input_str[1:]
-    time = input_str[:input_str.index(":")+3].strip()
-    input_str = input_str[len(time):]
-    indexofLetter = -1
-    for num, i in enumerate(input_str):
-        if i.isalpha() and indexofLetter == -1:
-            indexofLetter = num
-    if indexofLetter == -1:
-        # If there are no more letters, everything is part of the duration
-        # and there is no prof
-        duration = input_str.strip()
+    bool_print = False
+    input_str_separated = input_str.split(" "*4)
+    prof = ""
+    to_return = []
+    for input_str in input_str_separated:
+        input_str = input_str.strip()
+        re_match = re.match("([A-Za-z ]+)$", input_str)
+        if re_match:
+            # If it is a prof and not a time format
+            prof = input_str
+    for input_str in input_str_separated:
+        weekday = ""
+        time = ""
+        duration = ""
         room = ""
-        prof = ""
-    else:
-        duration = input_str[:indexofLetter].strip()
-        input_str = input_str[indexofLetter:].replace("  ", " ")
-        # secondSpace = " ".join(input_str.split(" ")[1:]).indexOf(" ")
-        secondSpace = nth_occur(input_str, 2, " ")
-        if secondSpace == -1:
-            secondSpace = len(input_str)
-        room = input_str[:secondSpace+1].strip() # Building + Room number
-        prof = input_str[secondSpace+1:].strip() # Whatever is after the room
-        # input_str = f"{weekday} {time} {duration} {room} {prof}"
-    return [weekday, time, duration, room, prof]
+        input_str = input_str.replace("  ", " ").strip()
+        re_match = re.match("([MTWRF])(\d{1,2}:\d{2})(\d{2,3})(.*)", input_str)
+        if re_match:
+            weekday = re_match.group(1)
+            time = re_match.group(2)
+            duration = re_match.group(3)
+            room = re_match.group(4).replace("  ", " ")
+            to_return.append([weekday, time, duration, room, prof])
+    return to_return
 
 def get_table_contents(filepath):
     if filepath.endswith(".html"):
@@ -355,42 +353,44 @@ def main():
             # First entry after title row of a course
             current_section = row[5]
             if row[8] == "ONLN" or len(row[14]) == 0:
-                times = ["", "", "", "", ""]
+                times = [["", "", "", "", ""]]
             else:
                 times = time_location_formatted(row[14])
-            course_current["Num"] = row[3] # 4 digits
-            course_current["Credits"] = row[4]
-            course_current["Language"] = row[7] # Language taught (ex. EN)
-            course_current["Meetings"].append({
-                "Section": current_section,
-                "Type": row[8],
-                "Num": row[10],
-                "CAT": row[6],
-                "Day": times[0],
-                "Time": times[1],
-                "Duration": times[2],
-                "Location": times[3],
-                "Instructor": times[4]
-            })
+            for time in times:
+                course_current["Num"] = row[3] # 4 digits
+                course_current["Credits"] = row[4]
+                course_current["Language"] = row[7] # Language taught (ex. EN)
+                course_current["Meetings"].append({
+                    "Section": current_section,
+                    "Type": row[8],
+                    "Num": row[10],
+                    "CAT": row[6],
+                    "Day": time[0],
+                    "Time": time[1],
+                    "Duration": time[2],
+                    "Location": time[3],
+                    "Instructor": time[4]
+                })
         elif row[1] == "" and row[2] != "" and row[6] != "Cancelled":
             # nth entry after first entry row of a course
             # Checks row[1] is empty because otherwise it could be a title row
             # Title rows have text in row[1]
             if row[2] == "ONLN" or len(row[8]) == 0:
-                times = ["", "", "", "", ""]
+                times = [["", "", "", "", ""]]
             else:
                 times = time_location_formatted(row[8])
-            course_current["Meetings"].append({
-                "Section": current_section,
-                "Type": row[2],
-                "Num": row[4],
-                "CAT": row[6],
-                "Day": times[0],
-                "Time": times[1],
-                "Duration": times[2],
-                "Location": times[3],
-                "Instructor": times[4]
-            })
+            for time in times:
+                course_current["Meetings"].append({
+                    "Section": current_section,
+                    "Type": row[2],
+                    "Num": row[4],
+                    "CAT": row[6],
+                    "Day": time[0],
+                    "Time": time[1],
+                    "Duration": time[2],
+                    "Location": time[3],
+                    "Instructor": time[4]
+                })
         elif row[1] != "":
             # Condition: Faculty perameter is not empty
             # Title row
