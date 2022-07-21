@@ -93,7 +93,7 @@ def time_location_formatted(input_str):
     return to_return
 
 def get_table_contents(filepath):
-    if filepath.endswith(".html"):
+    if filepath.lower().endswith(".html"):
         index = open(filepath.replace("file://", ""), 'rb').read() # Get contents of file
         S = BeautifulSoup(index, 'lxml') # Make bs4 object using lxml parser
         Attr = S.html.body.table.tbody # Locating table row elements
@@ -170,19 +170,22 @@ def ask_int(question, max):
             print(f"{str_prefix_err} Input a number and no other characters!")
     return ans
 
+def get_timetable_online():
+    # TODO
+    return ""
+
 def main():
     BOOL_QUIET = True
     FILENAME_OUTPUT = "" # JSON output file name. Changed by user later
     runtimes = [] # Runtimes for each course
-    html_folder = os.path.expanduser("~/git/yorku-class-scraper/html/")
+    # html_folder = os.path.expanduser("~/git/yorku-class-scraper/html/")
     row_multiplier = 0.25 # Roughly how long the program takes to process 1 row (in seconds)
     # Local file paths
-    filepaths = [f"file://{html_folder}" + i for i in os.listdir(html_folder)]
+    filepaths = [] # Paths of HTML files will be stored here
     all_rows = [] # Row text will be placed here
 
     # USER ARGUMENT PARSING
     args = sys.argv
-    print(args)
     if len(args) > 1:
         # args[0] = file name, ignore this
         for arg_num, arg in enumerate(args[1:]):
@@ -191,8 +194,9 @@ def main():
                 print("https://github.com/hussein-esmail7/yorku-class-scraper")
                 print("\nArguments:")
                 print("\t-h, --help\tHelp message and exit program.")
+                print("\t-i, --input\tInput folder path of HTML files or HTML file path to convert.")
                 print("\t-o, --output\tInput JSON file name.")
-                print("\t-q, --quiet\tQuiet mode")
+                print("\t-q, --quiet\tQuiet mode.")
                 sys.exit()
             elif arg == "-o" or arg == "--output": # .json file name
                 # User inputs the JSON location in the next arg
@@ -201,9 +205,43 @@ def main():
                     # If JSON not found, reset the variable to ask again later
                     print(f"{str_prefix_err} JSON file already exists!")
                     FILENAME_OUTPUT = ""
+            elif arg == "-i" or arg == "--input": # html folder or file input
+                # if args[arg_num+2].lower() == "online":
+                #     filepaths = get_timetable_online()
+                test = os.path.expanduser(args[arg_num+2])
+                if os.path.exists(test):
+                    if test.lower().endswith(".html"):
+                        filepaths = [test]
+                    elif os.path.isdir(test):
+                        if not test.endswith("/"):
+                            test = test + "/"
+                        filepaths = [f"file://{test}" + i for i in os.listdir(test)]
+                    # Else (file exists but does not meet requirements): No handler needed, program will check `filepaths`
+                    # and ask user again anyway
+                else:
+                    print(f"{str_prefix_err} File/folder path invalid!")
             elif arg == "-q" or arg == "--quiet":
                 BOOL_QUIET = True
 
+    elif filepaths == []:
+        # If the HTML file(s) haven't been specified in the command line args
+        html_path = input(f"{str_prefix_q} Path of HTML file(s) to convert: ").strip()
+        html_path = os.path.expanduser(html_path)
+        while not os.path.exists(html_path):
+            # if args[arg_num+2].lower() == "online":
+            #     filepaths = get_timetable_online()
+            if html_path.lower() == "exit" or html_path.lower() == "quit":
+                sys.exit()
+            print(f"{str_prefix_err} File/folder path invalid!")
+            html_path = os.path.expanduser(html_path)
+        if html_path.lower().endswith(".html"):
+            filepaths = [html_path]
+        elif os.path.isdir(html_path):
+            if not html_path.endswith("/"):
+                html_path = html_path + "/"
+            filepaths = [f"file://{html_path}" + i for i in os.listdir(html_path)]
+
+    # filepaths = [f"file://{html_folder}" + i for i in os.listdir(html_folder)]
 
     # Ask the user what they want the output file name to be
     while len(FILENAME_OUTPUT) == 0:
@@ -214,6 +252,7 @@ def main():
             if not yes_or_no(f"Is '{FILENAME_OUTPUT}' correct? "):
                 FILENAME_OUTPUT = ""
 
+    print(f"{str_prefix_info} Running...")
     progress_bar(not BOOL_QUIET, INT_PROGRESS_BAR_LEN, 0, len(all_rows), "")
 
     # Used for progress bar
