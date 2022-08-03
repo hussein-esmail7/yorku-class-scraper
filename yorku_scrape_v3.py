@@ -18,6 +18,7 @@ bool_run_in_background  = True
 
 target_site             = "https://w2prod.sis.yorku.ca/Apps/WebObjects/cdm.woa/5/wo/haRSuBvTH011F9mNuT4260/0.3.10.39"
 BOOL_DEV_PRINTS         = False # Unnaturally verbose, maybe too much
+not BOOL_QUIET = True
 BOOL_NO_COLOR           = False
 INT_PROGRESS_BAR_LEN    = 50
 
@@ -252,7 +253,8 @@ def main():
             if not yes_or_no(f"Is '{FILENAME_OUTPUT}' correct? "):
                 FILENAME_OUTPUT = ""
 
-    print(f"{str_prefix_info} Running...")
+    if not BOOL_QUIET:
+        print(f"{str_prefix_info} Running...")
     progress_bar(not BOOL_QUIET, INT_PROGRESS_BAR_LEN, 0, len(all_rows), "")
 
     # Used for progress bar
@@ -275,6 +277,9 @@ def main():
         11: ''
         """
         all_rows = all_rows + trs
+        if filepath.endswith(".html") and not BOOL_QUIET:
+            print(f"{str_prefix_info} JSON File: {filepath}")
+            print(f"\t\tNumber of 'tr's: {len(trs)}")
     # Actually iterate the tables
     """
     Columns - OLD:
@@ -410,6 +415,8 @@ def main():
             course_current["Meetings"] = [] # Individual time occurences
             current_section = "" # A, B, C, Z, etc.
         progress_bar(not BOOL_QUIET, INT_PROGRESS_BAR_LEN, progress_current, len(all_rows), "")
+    if not BOOL_QUIET:
+        print(f"{len(all_courses)} courses added")
     # Output JSON
     final = json.dumps(all_courses, indent=4)
     open(FILENAME_OUTPUT, "w").writelines(final)
