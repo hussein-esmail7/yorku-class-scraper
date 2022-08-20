@@ -312,6 +312,14 @@ def main():
     for row in all_rows:
         progress_current += 1
 
+        # OLD Title row
+        # OLD 0: Empty
+        # OLD 1: Faculty
+        # OLD 2: Course department code ("EECS", "ADMS", etc.)
+        # OLD 3: Term (F, Y, etc.)
+        # OLD 4: Course title
+        # OLD 5: Empty
+
         # Title row
         # 0: Empty
         # 1: Faculty
@@ -319,6 +327,25 @@ def main():
         # 3: Term (F, Y, etc.)
         # 4: Course title
         # 5: Empty
+
+        # OLD First entry after title row of a course
+        # OLD 0: Empty
+        # OLD 1: Empty
+        # OLD 2: Empty
+        # OLD 3: Course number ("1001" in "EECS 1001")
+        # OLD 4: Number of credits ("_.__" format)
+        # OLD 5: Course section (A, B, etc.)
+        # OLD 6: Empty
+        # OLD 7: Language course is taught in ("EN", "FR", etc.)
+        # OLD 8: Session Type (LECT, TUTR, SEMR, etc.)
+        # OLD 9: Empty
+        # OLD 10: Session Type Number ("01" in "LECT 01")
+        # OLD 11: Empty
+        # OLD 12: Empty
+        # OLD 13: Empty
+        # OLD 14: Weekday, Time, Duration, Location, Prof
+        # OLD 15: Additional Notes
+        # OLD 16: Empty
 
         # First entry after title row of a course
         # 0: Empty
@@ -339,6 +366,21 @@ def main():
         # 15: Additional Notes
         # 16: Empty
 
+        # OLD nth entry after first entry row of a course
+        # OLD 0: Empty
+        # OLD 1: Empty
+        # OLD 2: Session Type (LECT, TUTR, SEMR, etc.)
+        # OLD 3: Empty
+        # OLD 4: Session Type Number ("01" in "LECT 01")
+        # OLD 5: Empty
+        # OLD 6: CAT or "Cancelled"
+        # OLD 7: Empty
+        # OLD 8: Weekday, Time, Duration, Location, Prof
+        # OLD 9: Empty
+        # OLD 10: Empty
+        # OLD 11: Additional Notes
+        # OLD 12: Empty
+
         # nth entry after first entry row of a course
         # 0: Empty
         # 1: Empty
@@ -353,6 +395,7 @@ def main():
         # 10: Empty
         # 11: Additional Notes
         # 12: Empty
+
         if row[3] != "" and row[3].isnumeric() and row[12] != "Cancelled":
             # First entry after title row of a course
             current_section = row[5]
